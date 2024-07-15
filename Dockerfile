@@ -2,7 +2,7 @@
 # before update:
 # > test Redmine Administration -> Redmine Git Hosting -> Rescue -> Flush Git Cache?
 # > in docker container /usr/src/redmine/log/git_hosting.log should not report any errors during gitolite-admin repo cloning
-FROM redmine:5.0.4
+FROM redmine:5.0.9
 
 # install dependencies
 RUN apt-get update && apt-get install -y \
@@ -17,6 +17,7 @@ RUN apt-get update && apt-get install -y \
 	libssl-dev \
 	libgpg-error-dev \
 	curl \
+	vim \
 	sudo
 
 # prevent permission error when running bundle install
@@ -42,11 +43,12 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get install -y gitolite3 && \
 RUN sed -i -e "s/GIT_CONFIG_KEYS.*/GIT_CONFIG_KEYS  =>  '.*',/g" /etc/gitolite3/gitolite.rc && \
     sed -i -e "s/# LOCAL_CODE.*=>.*\"\$ENV{HOME}\/local\"/LOCAL_CODE => \"\$ENV{HOME}\/local\"/" /etc/gitolite3/gitolite.rc
 
-RUN sed -i -e "s/#Port 22/Port 2222/g" /etc/ssh/sshd_config && \
-    sed -i -e "s/AcceptEnv LANG .*/#AcceptEnv LANG LC_\*/g" /etc/ssh/sshd_config && \
-    # redmine_git_hosting seem to except only RSA host keys, so force the daemon \
-    # to only use rsa host keys. maybe this could removed, when updating to debian bookworm (see FROM)
-    echo "HostKeyAlgorithms ssh-rsa" >> /etc/ssh/sshd_config
+RUN sed -i -e "s/AcceptEnv LANG .*/#AcceptEnv LANG LC_\*/g" /etc/ssh/sshd_config 
+
+# Fix for https://github.com/redmine-git-hosting/redmine_git_hosting/issues/822
+RUN echo "PubkeyAcceptedAlgorithms +ssh-rsa" >> /etc/ssh/sshd_config && \
+    echo "PubkeyAcceptedKeyTypes +ssh-rsa" >> /etc/ssh/sshd_config && \
+    echo "\ngem 'rugged', [\"~> 1.5.0\", \"< 1.5.1\"]" >> /usr/src/redmine/Gemfile
 
 # clone redmine git hosting repository & fix dependency problem
 RUN cd /usr/src/redmine/plugins && \
