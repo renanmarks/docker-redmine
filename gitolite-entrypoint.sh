@@ -6,7 +6,7 @@ if [  "$?" != 0 ]; then
 	/etc/init.d/ssh restart
 fi
 
-if [ -n "$SETUP_GITOLITE" ]; then
+if [ ! -f /home/redmine/done ]; then
 	echo "[SETUP_GITOLITE] Installing the redmine keys..."
 	su - git -c "gitolite setup -pk /home/redmine/ssh_keys/redmine_gitolite_admin_id_rsa.pub"
 	
@@ -21,6 +21,7 @@ if [ -n "$SETUP_GITOLITE" ]; then
 
 	echo "[SETUP_GITOLITE] Cleaning..."
 	rm -rf gitolite-admin
+	su - redmine -c "touch done"
 fi
 
 /docker-entrypoint.sh $@
